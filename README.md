@@ -76,23 +76,32 @@ GROUP BY ALL ORDER BY play_count DESC LIMIT 5"
 
 ### Mathematica Export
 
-1. Export data:
+1. Export data (optionally for a specific season):
 
    ```bash
-   nflx export wolfram
+   nflx export wolfram --season 2023
    ```
 
-2. Install the manifest:
+2. Install the manifest to your Mathematica application folder:
 
    ```bash
    nflx install wolfram
    ```
 
-3. In Mathematica, load the data:
+3. In Mathematica, load the package and use high-level symbolic helpers:
 
    ```mathematica
-   Get["NFLXport.wl"]
-   NFLTeams[] // TableForm
+   Needs["NFLXport`"]
+
+   (* Get data for a specific team *)
+   NFLTeam["KC"]
+
+   (* Search for players *)
+   NFLPlayerSearch["Mahomes"]
+
+   (* Access season summaries *)
+   season = NFLSeason[2023]
+   season["QBLeaders"]
    ```
 
 ## Project Structure

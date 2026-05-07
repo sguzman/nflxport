@@ -69,6 +69,9 @@ enum DbCommands {
         /// Datasets to ingest (comma separated or "all")
         #[arg(short, long, default_value = "all")]
         datasets: String,
+        /// Season year for PBP data
+        #[arg(short, long)]
+        season: Option<i32>,
     },
     /// Run a SQL query against the local database
     Query {
@@ -295,7 +298,8 @@ fn main() -> Result<()> {
         Commands::Db { command } => {
             let db = DatabaseManager::new(cache.clone())?;
             match command {
-                DbCommands::Build { datasets } => {
+                DbCommands::Build { datasets, season } => {
+                    let s = season.unwrap_or(2023);
                     let ds_list = if datasets == "all" {
                         vec![
                             Dataset::Teams,
@@ -303,17 +307,17 @@ fn main() -> Result<()> {
                             Dataset::Schedules,
                             Dataset::PlayerStats,
                             Dataset::TeamStats,
-                            Dataset::Pbp(2023), // Default to current season
+                            Dataset::Pbp(s),
                         ]
                     } else {
                         datasets.split(',')
-                            .filter_map(|s| match s.trim() {
+                            .filter_map(|s_name| match s_name.trim() {
                                 "teams" => Some(Dataset::Teams),
                                 "players" => Some(Dataset::Players),
                                 "schedules" => Some(Dataset::Schedules),
                                 "pstats" => Some(Dataset::PlayerStats),
                                 "tstats" => Some(Dataset::TeamStats),
-                                "pbp" => Some(Dataset::Pbp(2023)),
+                                "pbp" => Some(Dataset::Pbp(s)),
                                 _ => None,
                             })
                             .collect()

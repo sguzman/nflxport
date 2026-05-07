@@ -46,6 +46,9 @@ impl WolframExporter {
         wl_content.push_str("NFLPlayerStats::usage = \"NFLPlayerStats[] returns the player stats dataset.\";\n");
         wl_content.push_str("NFLPBP::usage = \"NFLPBP[year] returns the play-by-play dataset for a specific year.\";\n");
         wl_content.push_str("NFLTeam::usage = \"NFLTeam[abbr] returns data for a specific team.\";\n");
+        wl_content.push_str("NFLPlayer::usage = \"NFLPlayer[id] returns data for a specific player by GSIS ID.\";\n");
+        wl_content.push_str("NFLGame::usage = \"NFLGame[id] returns data for a specific game by game ID.\";\n");
+        wl_content.push_str("NFLSeason::usage = \"NFLSeason[year] returns a summary of a specific season.\";\n");
         wl_content.push_str("NFLPlayerSearch::usage = \"NFLPlayerSearch[name] searches for players by name.\";\n");
         wl_content.push_str("NFLGamesByTeam::usage = \"NFLGamesByTeam[abbr] returns all games for a specific team.\";\n\n");
 
@@ -61,6 +64,13 @@ impl WolframExporter {
         wl_content.push_str("  \"HeaderLines\" -> 1\n");
         wl_content.push_str("];\n\n");
 
+        wl_content.push_str("NFLPBP[year_Integer] := NFLPBP[year] = Module[{name = \"pbp_\" <> ToString[year]},\n");
+        wl_content.push_str("  If[FileExistsQ[FileNameJoin[{NFLXportDataDirectory, name <> \".csv\"}]],\n");
+        wl_content.push_str("    NFLXportImportCSV[name],\n");
+        wl_content.push_str("    $Failed\n");
+        wl_content.push_str("  ]\n");
+        wl_content.push_str("];\n\n");
+
         // Base datasets
         for ds in datasets {
             let name = ds.cache_key().replace("/", "_");
@@ -69,7 +79,7 @@ impl WolframExporter {
                 Dataset::Schedules => wl_content.push_str(&format!("NFLSchedules[] := NFLSchedules[] = NFLXportImportCSV[\"{}\"];\n", name)),
                 Dataset::Players => wl_content.push_str(&format!("NFLPlayers[] := NFLPlayers[] = NFLXportImportCSV[\"{}\"];\n", name)),
                 Dataset::PlayerStats => wl_content.push_str(&format!("NFLPlayerStats[] := NFLPlayerStats[] = NFLXportImportCSV[\"{}\"];\n", name)),
-                Dataset::Pbp(year) => wl_content.push_str(&format!("NFLPBP[{}] := NFLPBP[{}] = NFLXportImportCSV[\"{}\"];\n", year, year, name)),
+                Dataset::Pbp(_year) => { /* Handled by dynamic NFLPBP[year] */ },
                 Dataset::TeamStats => wl_content.push_str(&format!("NFLTeamStats[] := NFLTeamStats[] = NFLXportImportCSV[\"{}\"];\n", name)),
             }
         }
@@ -77,6 +87,15 @@ impl WolframExporter {
         // Higher-level helpers
         wl_content.push_str("\n(* Helpers *)\n");
         wl_content.push_str("NFLTeam[abbr_String] := NFLTeams[][SelectFirst[#[\"team_abbr\"] == abbr &]];\n");
+        wl_content.push_str("NFLPlayer[id_String] := NFLPlayers[][SelectFirst[#[\"gsis_id\"] == id &]];\n");
+        wl_content.push_str("NFLGame[id_String] := NFLSchedules[][SelectFirst[#[\"game_id\"] == id &]];\n");
+        wl_content.push_str("NFLSeason[year_Integer] := <|\n");
+        wl_content.push_str("  \"Year\" -> year,\n");
+        wl_content.push_str("  \"Games\" -> NFLSchedules[][Select[#[\"season\"] == year &]],\n");
+        wl_content.push_str("  \"PBP\" -> NFLPBP[year],\n");
+        wl_content.push_str("  \"Stats\" -> NFLPlayerStats[][Select[#[\"season\"] == year &]],\n");
+        wl_content.push_str("  \"QBLeaders\" -> NFLPlayerStats[][Select[#[\"season\"] == year && #[\"position\"] == \"QB\" &]][SortBy[#[\"passing_yards\"] &]] /* Reverse\n");
+        wl_content.push_str("|>;\n\n");
         wl_content.push_str("NFLPlayerSearch[name_String] := NFLPlayers[][Select[StringContainsQ[#[\"display_name\"], name, IgnoreCase -> True] &]];\n");
         wl_content.push_str("NFLGamesByTeam[abbr_String] := NFLSchedules[][Select[#[\"home_team\"] == abbr || #[\"away_team\"] == abbr &]];\n");
         
