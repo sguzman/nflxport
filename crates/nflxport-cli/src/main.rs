@@ -130,10 +130,28 @@ enum CacheCommands {
 }
 
 fn main() -> Result<()> {
-    // Initialize tracing with default env filter
-    tracing_subscriber::fmt::init();
+    // Initialize dual-layer tracing
+    use tracing_subscriber::{fmt, prelude::*, Registry};
+    
+    let file_appender = tracing_appender::rolling::never("logs", "nflxport.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    
+    let file_layer = fmt::layer()
+        .with_writer(non_blocking)
+        .with_ansi(false);
+    
+    let stdout_layer = fmt::layer()
+        .with_target(false);
+        
+    Registry::default()
+        .with(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "nflxport=info,nflx=info".into()))
+        .with(stdout_layer)
+        .with(file_layer)
+        .init();
     
     let cli = Cli::parse();
+    tracing::info!("Starting nflx CLI with cache at: {}", cli.cache_dir);
+    
     let cache = Cache::new(cli.cache_dir.clone())?;
     let fetcher = Fetcher::new(cache.clone());
 

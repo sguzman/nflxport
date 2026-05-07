@@ -29,16 +29,19 @@ nflx fetch pbp --season 2023
 ### Analytical Queries
 
 #### Statistical Leaders
+
 ```bash
 nflx stats leaders passing_yards --limit 5
 ```
 
 #### Team Summary
+
 ```bash
 nflx stats team-summary KC
 ```
 
 #### Player Search
+
 ```bash
 nflx stats player-search Mahomes
 ```
@@ -46,14 +49,19 @@ nflx stats player-search Mahomes
 ### Mathematica Export
 
 1. Export data:
+
    ```bash
    nflx export wolfram
    ```
+
 2. Install the manifest:
+
    ```bash
    nflx install wolfram
    ```
+
 3. In Mathematica, load the data:
+
    ```mathematica
    Get["NFLXport.wl"]
    NFLTeams[] // TableForm
