@@ -1,0 +1,15 @@
+[package]
+name = "nflxport-wolfram"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+polars.workspace = true
+camino.workspace = true
+nflxport-core.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+serde.workspace = true

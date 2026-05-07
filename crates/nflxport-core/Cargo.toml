@@ -1,0 +1,21 @@
+[package]
+name = "nflxport-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+polars.workspace = true
+chrono.workspace = true
+directories.workspace = true
+camino.workspace = true
+sha2.workspace = true
+hex.workspace = true
+indicatif.workspace = true

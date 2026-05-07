@@ -1,0 +1,19 @@
+[package]
+name = "nflxport-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "nflx"
+path = "src/main.rs"
+
+[dependencies]
+nflxport-core.workspace = true
+nflxport-wolfram.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+camino.workspace = true
