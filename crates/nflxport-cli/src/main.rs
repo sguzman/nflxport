@@ -221,12 +221,30 @@ fn main() -> Result<()> {
             match command {
                 ExportCommands::Wolfram { datasets, dir, season } => {
                     let export_dir = Utf8PathBuf::from(dir);
-                    let exporter = nflxport_wolfram::WolframExporter::new(cache, export_dir);
+                    let exporter = nflxport_wolfram::WolframExporter::new(cache.clone(), export_dir);
                     
                     let ds_to_export = if datasets == "all" {
-                        let mut all = vec![Dataset::Teams, Dataset::Schedules, Dataset::Players, Dataset::PlayerStats];
+                        let mut all = vec![Dataset::Teams, Dataset::Schedules, Dataset::Players, Dataset::PlayerStats, Dataset::TeamStats];
+                        
+                        // Scan cache for PBP seasons
+                        let pbp_dir = cache.root.join("raw/pbp");
+                        if let Ok(entries) = std::fs::read_dir(pbp_dir) {
+                            for entry in entries.flatten() {
+                                if let Some(name) = entry.file_name().to_str() {
+                                    if name.ends_with(".parquet") {
+                                        if let Ok(year) = name.trim_end_matches(".parquet").parse::<i32>() {
+                                            all.push(Dataset::Pbp(year));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // If a specific season was requested, ensure it's included (even if not cached yet, though exporter will skip)
                         if let Some(s) = season {
-                            all.push(Dataset::Pbp(s));
+                            if !all.iter().any(|d| matches!(d, Dataset::Pbp(y) if *y == s)) {
+                                all.push(Dataset::Pbp(s));
+                            }
                         }
                         all
                     } else {
@@ -299,17 +317,37 @@ fn main() -> Result<()> {
             let db = DatabaseManager::new(cache.clone())?;
             match command {
                 DbCommands::Build { datasets, season } => {
-                    let s = season.unwrap_or(2023);
                     let ds_list = if datasets == "all" {
-                        vec![
+                        let mut all = vec![
                             Dataset::Teams,
                             Dataset::Players,
                             Dataset::Schedules,
                             Dataset::PlayerStats,
                             Dataset::TeamStats,
-                            Dataset::Pbp(s),
-                        ]
+                        ];
+
+                        // Scan cache for PBP seasons
+                        let pbp_dir = cache.root.join("raw/pbp");
+                        if let Ok(entries) = std::fs::read_dir(pbp_dir) {
+                            for entry in entries.flatten() {
+                                if let Some(name) = entry.file_name().to_str() {
+                                    if name.ends_with(".parquet") {
+                                        if let Ok(year) = name.trim_end_matches(".parquet").parse::<i32>() {
+                                            all.push(Dataset::Pbp(year));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if let Some(s) = season {
+                            if !all.iter().any(|d| matches!(d, Dataset::Pbp(y) if *y == s)) {
+                                all.push(Dataset::Pbp(s));
+                            }
+                        }
+                        all
                     } else {
+                        let s = season.unwrap_or(2023);
                         datasets.split(',')
                             .filter_map(|s_name| match s_name.trim() {
                                 "teams" => Some(Dataset::Teams),
