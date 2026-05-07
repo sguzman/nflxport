@@ -19,3 +19,4 @@ camino.workspace = true
 sha2.workspace = true
 hex.workspace = true
 indicatif.workspace = true
+duckdb.workspace = true

@@ -8,8 +8,8 @@ pub struct StatsQuery {
 }
 
 impl StatsQuery {
-    pub fn new(loader: DatasetLoader) -> Self {
-        Self { loader }
+    pub fn new(cache: crate::cache::Cache) -> Self {
+        Self { loader: DatasetLoader::new(cache) }
     }
 
     pub fn leaders(&self, category: &str, limit: usize) -> Result<DataFrame> {

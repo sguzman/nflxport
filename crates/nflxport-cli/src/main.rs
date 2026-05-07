@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use std::fs;
 use clap::{Parser, Subcommand};
-use nflxport_core::{Cache, Fetcher, Dataset};
+use nflxport_core::{Cache, Fetcher, Dataset, DatabaseManager};
 use camino::Utf8PathBuf;
 
 #[derive(Parser)]
@@ -54,6 +54,26 @@ enum Commands {
     Stats {
         #[command(subcommand)]
         command: StatsCommands,
+    },
+    /// Analytical database commands
+    Db {
+        #[command(subcommand)]
+        command: DbCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum DbCommands {
+    /// Build DuckDB database from cached parquet files
+    Build {
+        /// Datasets to ingest (comma separated or "all")
+        #[arg(short, long, default_value = "all")]
+        datasets: String,
+    },
+    /// Run a SQL query against the local database
+    Query {
+        /// SQL query string
+        sql: String,
     },
 }
 
@@ -242,7 +262,7 @@ fn main() -> Result<()> {
                     } else {
                         // Default Linux path
                         let home = std::env::var("HOME").context("HOME not set")?;
-                        Utf8PathBuf::from(home).join(".Mathematica/Applications")
+                        Utf8PathBuf::from(home).join(".Mathematica/Applications/NFLXport")
                     };
 
                     if !dest_dir.exists() {
@@ -256,23 +276,54 @@ fn main() -> Result<()> {
             }
         },
         Commands::Stats { command } => {
-            let loader = nflxport_core::DatasetLoader::new(cache);
-            let query = nflxport_core::StatsQuery::new(loader);
+            let query_engine = nflxport_core::query::StatsQuery::new(cache.clone());
             match command {
                 StatsCommands::Leaders { category, limit } => {
-                    let df = query.leaders(&category, limit)?;
-                    println!("Top {} leaders for {}:", limit, category);
+                    let df = query_engine.leaders(&category, limit)?;
                     println!("{}", df);
-                },
+                }
                 StatsCommands::TeamSummary { team } => {
-                    let df = query.team_summary(&team)?;
-                    println!("Summary for {}:", team);
+                    let df = query_engine.team_summary(&team)?;
                     println!("{}", df);
-                },
+                }
                 StatsCommands::PlayerSearch { name } => {
-                    let df = query.player_search(&name)?;
-                    println!("Search results for '{}':", name);
+                    let df = query_engine.player_search(&name)?;
                     println!("{}", df);
+                }
+            }
+        }
+        Commands::Db { command } => {
+            let db = DatabaseManager::new(cache.clone())?;
+            match command {
+                DbCommands::Build { datasets } => {
+                    let ds_list = if datasets == "all" {
+                        vec![
+                            Dataset::Teams,
+                            Dataset::Players,
+                            Dataset::Schedules,
+                            Dataset::PlayerStats,
+                            Dataset::TeamStats,
+                        ]
+                    } else {
+                        datasets.split(',')
+                            .filter_map(|s| match s.trim() {
+                                "teams" => Some(Dataset::Teams),
+                                "players" => Some(Dataset::Players),
+                                "schedules" => Some(Dataset::Schedules),
+                                "pstats" => Some(Dataset::PlayerStats),
+                                "tstats" => Some(Dataset::TeamStats),
+                                _ => None,
+                            })
+                            .collect()
+                    };
+                    db.build_from_cache(&ds_list)?;
+                    println!("Successfully built database at {}", cache.root.join("nflxport.db"));
+                }
+                DbCommands::Query { sql } => {
+                    let results = db.query(&sql)?;
+                    for row in results {
+                        println!("{}", row.join(" | "));
+                    }
                 }
             }
         }

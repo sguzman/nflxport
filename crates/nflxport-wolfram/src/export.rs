@@ -37,7 +37,20 @@ impl WolframExporter {
 
     pub fn generate_manifest_wl(&self, datasets: &[Dataset]) -> Result<Utf8PathBuf> {
         let mut wl_content = String::new();
-        wl_content.push_str("(* NFLXport Data Manifest *)\n\n");
+        wl_content.push_str("BeginPackage[\"NFLXport`\"]\n\n");
+        
+        // Exported symbols
+        wl_content.push_str("NFLTeams::usage = \"NFLTeams[] returns the teams dataset.\";\n");
+        wl_content.push_str("NFLSchedules::usage = \"NFLSchedules[] returns the schedules dataset.\";\n");
+        wl_content.push_str("NFLPlayers::usage = \"NFLPlayers[] returns the players dataset.\";\n");
+        wl_content.push_str("NFLPlayerStats::usage = \"NFLPlayerStats[] returns the player stats dataset.\";\n");
+        wl_content.push_str("NFLPBP::usage = \"NFLPBP[year] returns the play-by-play dataset for a specific year.\";\n");
+        wl_content.push_str("NFLTeam::usage = \"NFLTeam[abbr] returns data for a specific team.\";\n");
+        wl_content.push_str("NFLPlayerSearch::usage = \"NFLPlayerSearch[name] searches for players by name.\";\n");
+        wl_content.push_str("NFLGamesByTeam::usage = \"NFLGamesByTeam[abbr] returns all games for a specific team.\";\n\n");
+
+        wl_content.push_str("Begin[\"`Private`\"]\n\n");
+        
         wl_content.push_str(&format!("NFLXportDataDirectory = \"{}\";\n\n", self.export_dir));
         
         wl_content.push_str("NFLXportImportCSV[name_String] := Import[\n");
@@ -46,27 +59,27 @@ impl WolframExporter {
         wl_content.push_str("  \"HeaderLines\" -> 1\n");
         wl_content.push_str("];\n\n");
 
+        // Base datasets
         for ds in datasets {
             let name = ds.cache_key().replace("/", "_");
-            let func_name = match ds {
-                Dataset::Teams => "NFLTeams".to_string(),
-                Dataset::Schedules => "NFLSchedules".to_string(),
-                Dataset::Players => "NFLPlayers".to_string(),
-                Dataset::Pbp(year) => format!("NFLPBP[{}]", year),
-                Dataset::PlayerStats => "NFLPlayerStats".to_string(),
-                Dataset::TeamStats => "NFLTeamStats".to_string(),
-            };
-            
-            if func_name.contains('[') {
-                // Handle parameterized functions separately if needed, 
-                // but for now let's just do a simple mapping for the core ones
-                let base_name = func_name.split('[').next().unwrap();
-                let param = func_name.split('[').nth(1).unwrap().trim_end_matches(']');
-                wl_content.push_str(&format!("{}[{}] := NFLXportImportCSV[\"{}\"];\n", base_name, param, name));
-            } else {
-                wl_content.push_str(&format!("{}[] := NFLXportImportCSV[\"{}\"];\n", func_name, name));
+            match ds {
+                Dataset::Teams => wl_content.push_str(&format!("NFLTeams[] := NFLTeams[] = NFLXportImportCSV[\"{}\"];\n", name)),
+                Dataset::Schedules => wl_content.push_str(&format!("NFLSchedules[] := NFLSchedules[] = NFLXportImportCSV[\"{}\"];\n", name)),
+                Dataset::Players => wl_content.push_str(&format!("NFLPlayers[] := NFLPlayers[] = NFLXportImportCSV[\"{}\"];\n", name)),
+                Dataset::PlayerStats => wl_content.push_str(&format!("NFLPlayerStats[] := NFLPlayerStats[] = NFLXportImportCSV[\"{}\"];\n", name)),
+                Dataset::Pbp(year) => wl_content.push_str(&format!("NFLPBP[{}] := NFLPBP[{}] = NFLXportImportCSV[\"{}\"];\n", year, year, name)),
+                Dataset::TeamStats => wl_content.push_str(&format!("NFLTeamStats[] := NFLTeamStats[] = NFLXportImportCSV[\"{}\"];\n", name)),
             }
         }
+
+        // Higher-level helpers
+        wl_content.push_str("\n(* Helpers *)\n");
+        wl_content.push_str("NFLTeam[abbr_String] := NFLTeams[][SelectFirst[#team_abbr == abbr &]];\n");
+        wl_content.push_str("NFLPlayerSearch[name_String] := NFLPlayers[][Select[StringContainsQ[#display_name, name, IgnoreCase -> True] &]];\n");
+        wl_content.push_str("NFLGamesByTeam[abbr_String] := NFLSchedules[][Select[#home_team == abbr || #away_team == abbr &]];\n");
+        
+        wl_content.push_str("\nEnd[]\n");
+        wl_content.push_str("EndPackage[]\n");
 
         let path = self.export_dir.join("NFLXport.wl");
         fs::write(&path, wl_content).context("Failed to write WL manifest")?;
