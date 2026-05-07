@@ -303,6 +303,7 @@ fn main() -> Result<()> {
                             Dataset::Schedules,
                             Dataset::PlayerStats,
                             Dataset::TeamStats,
+                            Dataset::Pbp(2023), // Default to current season
                         ]
                     } else {
                         datasets.split(',')
@@ -312,6 +313,7 @@ fn main() -> Result<()> {
                                 "schedules" => Some(Dataset::Schedules),
                                 "pstats" => Some(Dataset::PlayerStats),
                                 "tstats" => Some(Dataset::TeamStats),
+                                "pbp" => Some(Dataset::Pbp(2023)),
                                 _ => None,
                             })
                             .collect()

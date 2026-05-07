@@ -51,7 +51,9 @@ impl WolframExporter {
 
         wl_content.push_str("Begin[\"`Private`\"]\n\n");
         
-        wl_content.push_str(&format!("NFLXportDataDirectory = \"{}\";\n\n", self.export_dir));
+        let abs_export_dir = fs::canonicalize(&self.export_dir)
+            .unwrap_or_else(|_| self.export_dir.as_std_path().to_path_buf());
+        wl_content.push_str(&format!("NFLXportDataDirectory = \"{}\";\n\n", abs_export_dir.display()));
         
         wl_content.push_str("NFLXportImportCSV[name_String] := Import[\n");
         wl_content.push_str("  FileNameJoin[{NFLXportDataDirectory, name <> \".csv\"}],\n");
@@ -74,9 +76,9 @@ impl WolframExporter {
 
         // Higher-level helpers
         wl_content.push_str("\n(* Helpers *)\n");
-        wl_content.push_str("NFLTeam[abbr_String] := NFLTeams[][SelectFirst[#team_abbr == abbr &]];\n");
-        wl_content.push_str("NFLPlayerSearch[name_String] := NFLPlayers[][Select[StringContainsQ[#display_name, name, IgnoreCase -> True] &]];\n");
-        wl_content.push_str("NFLGamesByTeam[abbr_String] := NFLSchedules[][Select[#home_team == abbr || #away_team == abbr &]];\n");
+        wl_content.push_str("NFLTeam[abbr_String] := NFLTeams[][SelectFirst[#[\"team_abbr\"] == abbr &]];\n");
+        wl_content.push_str("NFLPlayerSearch[name_String] := NFLPlayers[][Select[StringContainsQ[#[\"display_name\"], name, IgnoreCase -> True] &]];\n");
+        wl_content.push_str("NFLGamesByTeam[abbr_String] := NFLSchedules[][Select[#[\"home_team\"] == abbr || #[\"away_team\"] == abbr &]];\n");
         
         wl_content.push_str("\nEnd[]\n");
         wl_content.push_str("EndPackage[]\n");

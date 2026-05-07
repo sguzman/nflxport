@@ -46,6 +46,34 @@ nflx stats team-summary KC
 nflx stats player-search Mahomes
 ```
 
+### Analytical Database (DuckDB)
+
+Nflxport includes a built-in DuckDB engine for high-performance SQL queries.
+
+#### Building the Database
+
+Ingest cached Parquet files into the local DuckDB instance:
+
+```bash
+nflx db build
+```
+
+#### Running SQL Queries
+
+Execute arbitrary SQL queries against the local database:
+
+```bash
+nflx db query "SELECT team_abbr, team_name FROM teams LIMIT 5"
+```
+
+Perform complex multi-table joins:
+
+```bash
+nflx db query "SELECT p.posteam, t.team_name, count(*) as play_count \
+FROM pbp_2023 p JOIN teams t ON p.posteam = t.team_abbr \
+GROUP BY ALL ORDER BY play_count DESC LIMIT 5"
+```
+
 ### Mathematica Export
 
 1. Export data:

@@ -21,9 +21,9 @@ impl DatabaseManager {
 
     pub fn build_from_cache(&self, datasets: &[Dataset]) -> Result<()> {
         for ds in datasets {
-            let path = self.cache.get_raw_path(&ds.cache_key());
+            let path = self.cache.get_raw_path(&ds.relative_path());
             if !path.exists() {
-                tracing::warn!("Skipping dataset {} because it's not in cache", ds.cache_key());
+                tracing::warn!("Skipping dataset {} because it's not in cache at {}", ds.cache_key(), path);
                 continue;
             }
 
