@@ -283,7 +283,7 @@ fn main() -> Result<()> {
                     } else {
                         // Default Linux path
                         let home = std::env::var("HOME").context("HOME not set")?;
-                        Utf8PathBuf::from(home).join(".Mathematica/Applications/NFLXport")
+                        Utf8PathBuf::from(home).join(".Wolfram/Applications")
                     };
 
                     if !dest_dir.exists() {
