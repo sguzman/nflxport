@@ -88,10 +88,13 @@ impl WolframExporter {
                         match self.loader.load(ds.clone()) {
                             Ok(mut df) => {
                                 let mut buf = Vec::new();
-                                JsonWriter::new(&mut buf).finish(&mut df)?;
+                                JsonWriter::new(&mut buf)
+                                    .with_json_format(JsonFormat::Json)
+                                    .finish(&mut df)?;
                                 let json = String::from_utf8(buf)?;
-                                let escaped_json = escape_wolfram_string(&json);
-                                wl_content.push_str(&format!("NFLPBP[{}] := NFLPBP[{}] = Dataset[ImportString[\"{}\", \"JSON\"]];\n", year, year, escaped_json));
+                                wl_content.push_str(&format!("NFLPBP[{}] := NFLPBP[{}] = Dataset[ImportString[", year, year));
+                                push_escaped_wolfram_string(&mut wl_content, &json);
+                                wl_content.push_str(", \"JSON\"]];\n");
                             },
                             Err(_) => {
                                 tracing::warn!("Skipping PBP {} - not in cache", year);
@@ -106,10 +109,13 @@ impl WolframExporter {
                 match self.loader.load(ds.clone()) {
                     Ok(mut df) => {
                         let mut buf = Vec::new();
-                        JsonWriter::new(&mut buf).finish(&mut df)?;
+                        JsonWriter::new(&mut buf)
+                            .with_json_format(JsonFormat::Json)
+                            .finish(&mut df)?;
                         let json = String::from_utf8(buf)?;
-                        let escaped_json = escape_wolfram_string(&json);
-                        wl_content.push_str(&format!("{}[] := {}[] = Dataset[ImportString[\"{}\", \"JSON\"]];\n", sym_name, sym_name, escaped_json));
+                        wl_content.push_str(&format!("{}[] := {}[] = Dataset[ImportString[", sym_name, sym_name));
+                        push_escaped_wolfram_string(&mut wl_content, &json);
+                        wl_content.push_str(", \"JSON\"]];\n");
                     },
                     Err(_) => {
                         tracing::warn!("Skipping {} - not in cache", ds.cache_key());
@@ -151,6 +157,14 @@ impl WolframExporter {
     }
 }
 
-fn escape_wolfram_string(s: &str) -> String {
-    s.replace('\\', "\\\\").replace('"', "\\\"")
+fn push_escaped_wolfram_string(out: &mut String, s: &str) {
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            _ => out.push(c),
+        }
+    }
+    out.push('"');
 }
