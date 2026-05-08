@@ -76,19 +76,31 @@ GROUP BY ALL ORDER BY play_count DESC LIMIT 5"
 
 ### Mathematica Export
 
-1. Export data (optionally for a specific season):
+Nflxport provides a powerful symbolic bridge to Mathematica. By default, it
+generates a **standalone** `.wl` manifest with all data embedded, making it
+perfectly portable between Linux/WSL and Windows.
+
+1. **Generate the Manifest**:
+   By default, this will scan your cache and embed *all* available datasets
+   (Teams, Schedules, Players, Stats, and all cached PBP years).
 
    ```bash
-   nflx export wolfram --season 2023
+   nflx export wolfram
    ```
 
-2. Install the manifest to your Mathematica application folder:
+   *Use the `--referenced` flag if you prefer the manifest to point to external
+   CSVs instead of embedding them.*
+
+2. **Load in Mathematica**:
+   You can load the generated file directly or install it to your
+   Applications folder.
 
    ```bash
    nflx install wolfram
    ```
 
-3. In Mathematica, load the package and use high-level symbolic helpers:
+3. **Symbolic Data Exploration**:
+   Once loaded, use high-level helpers to explore the data symbolically:
 
    ```mathematica
    Needs["NFLXport`"]
@@ -96,12 +108,11 @@ GROUP BY ALL ORDER BY play_count DESC LIMIT 5"
    (* Get data for a specific team *)
    NFLTeam["KC"]
 
-   (* Search for players *)
+   (* Search for players by name *)
    NFLPlayerSearch["Mahomes"]
 
-   (* Access season summaries *)
-   season = NFLSeason[2023]
-   season["QBLeaders"]
+   (* Explore a season summary *)
+   NFLSeason[2024]["QBLeaders"] // Take[#, 5] &
    ```
 
 ## Project Structure
