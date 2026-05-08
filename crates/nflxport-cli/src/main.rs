@@ -125,6 +125,9 @@ enum ExportCommands {
         /// Season for PBP data
         #[arg(short, long)]
         season: Option<i32>,
+        /// Do not embed data in the .wl file (use referenced CSVs instead)
+        #[arg(long)]
+        referenced: bool,
     },
 }
 
@@ -219,9 +222,10 @@ fn main() -> Result<()> {
         },
         Commands::Export { command } => {
             match command {
-                ExportCommands::Wolfram { datasets, dir, season } => {
+                ExportCommands::Wolfram { datasets, dir, season, referenced } => {
                     let export_dir = Utf8PathBuf::from(dir);
                     let exporter = nflxport_wolfram::WolframExporter::new(cache.clone(), export_dir);
+                    let standalone = !referenced;
                     
                     let ds_to_export = if datasets == "all" {
                         let mut all = vec![Dataset::Teams, Dataset::Schedules, Dataset::Players, Dataset::PlayerStats, Dataset::TeamStats];
@@ -255,16 +259,23 @@ fn main() -> Result<()> {
                         list
                     };
 
-                    println!("Exporting datasets to {}...", exporter_dir_path(&exporter));
-                    for ds in &ds_to_export {
-                        print!("  Exporting {:<20} ... ", ds.cache_key());
-                        match exporter.export_csv(ds.clone()) {
-                            Ok(path) => println!("Ok ({})", path.file_name().unwrap()),
-                            Err(e) => println!("Error: {}", e),
+                    if !standalone {
+                        println!("Exporting datasets to CSV...");
+                        for ds in &ds_to_export {
+                            print!("  Exporting {:<20} ... ", ds.cache_key());
+                            match exporter.export_csv(ds.clone()) {
+                                Ok(path) => println!("Ok ({})", path.file_name().unwrap()),
+                                Err(e) => println!("Error: {}", e),
+                            }
+                        }
+                    } else {
+                        println!("Building standalone Wolfram manifest (embedding datasets)...");
+                        for ds in &ds_to_export {
+                            println!("  Embedding {:<20} ...", ds.cache_key());
                         }
                     }
 
-                    let manifest_path = exporter.generate_manifest_wl(&ds_to_export)?;
+                    let manifest_path = exporter.generate_manifest_wl(&ds_to_export, standalone)?;
                     println!("\nGenerated Wolfram Language manifest: {}", manifest_path);
                     println!("To load in Mathematica, run: Get[\"{}\"]", manifest_path);
                 }
@@ -375,13 +386,6 @@ fn main() -> Result<()> {
 
     Ok(())
 }
-
-fn exporter_dir_path(_exporter: &nflxport_wolfram::WolframExporter) -> &str {
-    // This is a hack because we don't expose export_dir publicly 
-    // but we can just use the one passed in. 
-    "exports" // default for now
-}
-
 fn parse_dataset(name: &str, season: Option<i32>) -> Result<Dataset> {
     match name {
         "teams" => Ok(Dataset::Teams),
